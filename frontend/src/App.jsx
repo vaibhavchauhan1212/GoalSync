@@ -14,8 +14,8 @@ export default function App() {
   
   // State to hold the list of goals an employee is building/tracking
   const [goals, setGoals] = useState([
-    { title: 'Increase Platform Speed', thrustArea: 'Infrastructure', uom: 'Percentage', target: '25', weightage: 30, actual: '0', status: 'Not Started' },
-    { title: 'Resolve Customer Tickets', thrustArea: 'Support', uom: 'Numeric', target: '150', weightage: 20, actual: '0', status: 'Not Started' }
+    { title: 'Increase Platform Speed', thrustArea: 'Infrastructure', uom: 'Percentage', direction: 'Min', target: '25', weightage: 30, actual: '0', status: 'Not Started' },
+    { title: 'Reduce Server Turnaround Time (TAT)', thrustArea: 'Operations', uom: 'Numeric', direction: 'Max', target: '200', weightage: 20, actual: '200', status: 'Not Started' }
   ]);
   // 📑 Live database lifecycle state
   const [submissionStatus, setSubmissionStatus] = useState("Pending L1 Review");
@@ -52,6 +52,7 @@ export default function App() {
   const [newTitle, setNewTitle] = useState('');
   const [newThrust, setNewThrust] = useState('Infrastructure');
   const [newUom, setNewUom] = useState('Numeric');
+  const [newDirection, setNewDirection] = useState('Min'); // Min = Higher is Better, Max = Lower is Better
   const [newTarget, setNewTarget] = useState('');
   const [newWeight, setNewWeight] = useState(10);
 
@@ -59,20 +60,47 @@ export default function App() {
   const totalWeightage = goals.reduce((sum, g) => sum + g.weightage, 0);
   const goalCount = goals.length;
 
-  // Compute systemic calculation scores based on BRD Formulas
+  // 📐 SYSTEM-COMPUTED PROGRESS SCORES (Strictly adheres to Section 2.2 BRD Formulas)
   const calculateProgressScore = (g) => {
     const target = parseFloat(g.target) || 0;
     const actual = parseFloat(g.actual) || 0;
     if (target === 0) return 0;
 
-    if (g.uom === 'Percentage' || g.uom === 'Numeric') {
-      // Higher is better formula
-      return Math.min(Math.round((actual / target) * 100), 100);
-    }
     if (g.uom === 'Zero-based') {
-      return actual === 0 ? 100 : 0;
+      return actual === 0 ? 100 : 0; // If 0 -> 100%, else 0%
     }
-    return g.status === 'Completed' ? 100 : g.status === 'On Track' ? 50 : 0;
+    
+    if (g.uom === 'Timeline') {
+      return g.status === 'Completed' ? 100 : g.status === 'On Track' ? 50 : 0;
+    }
+
+    if (g.direction === 'Max') {
+      // Lower is Better formula: Target ÷ Achievement
+      if (actual === 0) return 0;
+      return Math.min(Math.round((target / actual) * 100), 100);
+    }
+
+    // Default: Higher is Better formula: Achievement ÷ Target
+    return Math.min(Math.round((actual / target) * 100), 100);
+  };
+
+  // 📊 CSV Export Engine (Fulfills Section 4: Achievement Report Requirement)
+  const exportToCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Goal Title,Thrust Area,UoM,Direction,Target,Actual Achievement,Status,Progress Score,Weightage\n";
+    
+    goals.forEach(g => {
+      const score = calculateProgressScore(g);
+      csvContent += `"${g.title}","${g.thrustArea}","${g.uom}","${g.direction === 'Min' ? 'Higher is Better' : 'Lower is Better'}","${g.target}","${g.actual || 0}","${g.status}","${score}%","${g.weightage}%"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `GoalSync_Achievement_Report.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleAddGoal = (e) => {
@@ -84,6 +112,7 @@ export default function App() {
       title: newTitle,
       thrustArea: newThrust,
       uom: newUom,
+      direction: newDirection,
       target: newTarget,
       weightage: parseInt(newWeight),
       actual: '0',
@@ -158,29 +187,13 @@ export default function App() {
             }}>
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Username</label>
-                <input 
-                  type="text" 
-                  value={loginCredentials.username}
-                  onChange={(e) => setLoginCredentials({...loginCredentials, username: e.target.value})}
-                  style={{ width: '94%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  required
-                />
+                <input type="text" value={loginCredentials.username} onChange={(e) => setLoginCredentials({...loginCredentials, username: e.target.value})} style={{ width: '94%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} required />
               </div>
-
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Password</label>
-                <input 
-                  type="password" 
-                  value={loginCredentials.password}
-                  onChange={(e) => setLoginCredentials({...loginCredentials, password: e.target.value})}
-                  style={{ width: '94%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  required
-                />
+                <input type="password" value={loginCredentials.password} onChange={(e) => setLoginCredentials({...loginCredentials, password: e.target.value})} style={{ width: '94%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} required />
               </div>
-
-              <button type="submit" style={{ width: '100%', padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' }}>
-                Sign In Securely
-              </button>
+              <button type="submit" style={{ width: '100%', padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' }}>Sign In Securely</button>
             </form>
           </div>
         </div>
@@ -193,8 +206,9 @@ export default function App() {
 
           <nav style={{ background: '#fff', padding: '15px 30px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, color: '#0f172a' }}>🎯 GoalSync Portal</h2>
-            <div style={{ background: '#e2e8f0', padding: '6px 14px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', color: '#475569' }}>
-              Current Dashboard: {currentRole}
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+              <button onClick={exportToCSV} style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>📥 Export CSV Report</button>
+              <div style={{ background: '#e2e8f0', padding: '6px 14px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', color: '#475569' }}>Dashboard: {currentRole}</div>
             </div>
           </nav>
 
@@ -209,7 +223,7 @@ export default function App() {
                     <form onSubmit={handleAddGoal} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
                       <label>
                         <strong style={{ display: 'block', marginBottom: '5px' }}>Goal Title</strong>
-                        <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Redesign internal interface" style={{ width: '95%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                        <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Optimize API endpoints" style={{ width: '95%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
                       </label>
                       <div style={{ display: 'flex', gap: '15px' }}>
                         <label style={{ flex: 1 }}>
@@ -222,7 +236,7 @@ export default function App() {
                           </select>
                         </label>
                         <label style={{ flex: 1 }}>
-                          <strong>UoM</strong>
+                          <strong>UoM Type</strong>
                           <select value={newUom} onChange={(e) => setNewUom(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '5px' }}>
                             <option value="Numeric">Numeric</option>
                             <option value="Percentage">Percentage (%)</option>
@@ -233,7 +247,14 @@ export default function App() {
                       </div>
                       <div style={{ display: 'flex', gap: '15px' }}>
                         <label style={{ flex: 1 }}>
-                          <strong>Target Metric Value</strong>
+                          <strong>Metric Rule Direction</strong>
+                          <select value={newDirection} onChange={(e) => setNewDirection(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '5px' }}>
+                            <option value="Min">Higher is Better (e.g. Sales)</option>
+                            <option value="Max">Lower is Better (e.g. TAT / Cost)</option>
+                          </select>
+                        </label>
+                        <label style={{ flex: 1 }}>
+                          <strong>Target Value</strong>
                           <input type="text" value={newTarget} onChange={(e) => setNewTarget(e.target.value)} placeholder="e.g., 90" style={{ width: '90%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '5px' }} />
                         </label>
                         <label style={{ flex: 1 }}>
@@ -241,9 +262,7 @@ export default function App() {
                           <input type="number" min="1" value={newWeight} onChange={(e) => setNewWeight(e.target.value)} style={{ width: '90%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '5px' }} />
                         </label>
                       </div>
-                      <button type="submit" disabled={goalCount >= 8} style={{ background: goalCount >= 8 ? '#cbd5e1' : '#2563eb', color: '#fff', padding: '10px', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>
-                        ➕ Add Goal Sheet Row
-                      </button>
+                      <button type="submit" disabled={goalCount >= 8} style={{ background: goalCount >= 8 ? '#cbd5e1' : '#2563eb', color: '#fff', padding: '10px', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>➕ Add Goal Sheet Row</button>
                     </form>
                   </div>
 
@@ -263,7 +282,7 @@ export default function App() {
                           <div key={index} style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
                             <div>
                               <strong style={{ color: '#334155' }}>{g.title}</strong>
-                              <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{g.thrustArea} • Target: {g.target} ({g.uom})</span>
+                              <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{g.thrustArea} • Target: {g.target} ({g.uom}) • <small style={{color:'#0369a1'}}>{g.direction === 'Min' ? 'Higher is Better' : 'Lower is Better'}</small></span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <span style={{ fontWeight: 'bold', background: '#e2e8f0', padding: '4px 8px', borderRadius: '4px', fontSize: '13px' }}>{g.weightage}%</span>
@@ -273,48 +292,27 @@ export default function App() {
                         ))}
                       </div>
                     </div>
-                    <button onClick={handleFinalSubmit} disabled={totalWeightage !== 100 || goalCount > 8} style={{ width: '100%', padding: '12px', background: (totalWeightage === 100 && goalCount <= 8) ? '#16a34a' : '#cbd5e1', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', marginTop: '15px' }}>
-                      🚀 Submit Goal Sheet for L1 Review
-                    </button>
+                    <button onClick={handleFinalSubmit} disabled={totalWeightage !== 100 || goalCount > 8} style={{ width: '100%', padding: '12px', background: (totalWeightage === 100 && goalCount <= 8) ? '#16a34a' : '#cbd5e1', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', marginTop: '15px' }}>🚀 Submit Goal Sheet for L1 Review</button>
                   </div>
                 </div>
 
-                {/* ⚡ PHASE 2: Live Achievement Tracking & Quarterly Check-ins Panel */}
+                {/* PHASE 2: Live Achievement Tracking Workspace */}
                 <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                   <h3 style={{ marginTop: 0, color: '#ea580c', borderBottom: '2px solid #f1f5f9', paddingBottom: '12px' }}>⏱️ Phase 2 — Quarterly Achievement Tracking Workspace</h3>
-                  <p style={{ color: '#64748b', fontSize: '14px', marginTop: 0 }}>Log actual quantitative achievements against baseline targets below[cite: 28].</p>
-                  
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                     {goals.map((g, index) => (
                       <div key={index} style={{ background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '20px', alignItems: 'center' }}>
                         <div>
                           <strong style={{ color: '#1e293b', display: 'block' }}>{g.title}</strong>
-                          <span style={{ fontSize: '12px', color: '#64748b' }}>Baseline Planned Target: <strong>{g.target} ({g.uom})</strong></span>
+                          <span style={{ fontSize: '12px', color: '#64748b' }}>Planned Target: <strong>{g.target} ({g.uom})</strong> | Calculation: <strong>{g.direction === 'Min' ? 'Higher is Better' : 'Lower is Better'}</strong></span>
                         </div>
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Actual Achievement</label>
-                          <input 
-                            type="text" 
-                            value={g.actual || '0'} 
-                            onChange={(e) => {
-                              const updated = [...goals];
-                              updated[index].actual = e.target.value;
-                              setGoals(updated);
-                            }}
-                            style={{ width: '80%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                          />
+                          <input type="text" value={g.actual || '0'} onChange={(e) => { const updated = [...goals]; updated[index].actual = e.target.value; setGoals(updated); }} style={{ width: '80%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
                         </div>
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Progress Status</label>
-                          <select 
-                            value={g.status || 'Not Started'} 
-                            onChange={(e) => {
-                              const updated = [...goals];
-                              updated[index].status = e.target.value;
-                              setGoals(updated);
-                            }}
-                            style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                          >
+                          <select value={g.status || 'Not Started'} onChange={(e) => { const updated = [...goals]; updated[index].status = e.target.value; setGoals(updated); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                             <option value="Not Started">Not Started</option>
                             <option value="On Track">On Track</option>
                             <option value="Completed">Completed</option>
@@ -327,10 +325,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  
-                  <button onClick={handleFinalSubmit} style={{ marginTop: '20px', padding: '12px 24px', background: '#ea580c', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    💾 Save Live Quarterly Progress Logs
-                  </button>
+                  <button onClick={handleFinalSubmit} style={{ marginTop: '20px', padding: '12px 24px', background: '#ea580c', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>💾 Save Live Quarterly Progress Logs</button>
                 </div>
 
               </div>
@@ -343,20 +338,18 @@ export default function App() {
                     <h3 style={{ margin: 0, color: '#059669' }}>💼 Manager Approval Console & Check-in Desk</h3>
                     <p style={{ color: '#64748b', margin: '5px 0 0 0' }}>Reviewing pending submission for: <strong>Vaibhav Chauhan (ID: 23SCSE1010681)</strong></p>
                   </div>
-                  <span style={{ background: '#dcfce7', color: '#16a34a', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '14px' }}>
-                    Status: {submissionStatus}
-                  </span>
+                  <span style={{ background: '#dcfce7', color: '#16a34a', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '14px' }}>Status: {submissionStatus}</span>
                 </div>
 
-                <h4 style={{ color: '#334155', marginBottom: '10px' }}>Submitted Goal Dimensions, Tracking & Scores</h4>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '12px' }}>Goal Title</th>
+                      <th style={{ padding: '12px' }}>Calculation Model</th>
                       <th style={{ padding: '12px' }}>Planned Target</th>
                       <th style={{ padding: '12px' }}>Actual Progress</th>
                       <th style={{ padding: '12px' }}>Status</th>
-                      <th style={{ padding: '12px' }}>Computed Progress</th>
+                      <th style={{ padding: '12px' }}>Computed Score</th>
                       <th style={{ padding: '12px', width: '120px' }}>Weightage (%)</th>
                     </tr>
                   </thead>
@@ -364,42 +357,18 @@ export default function App() {
                     {goals.map((g, index) => (
                       <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '12px', fontWeight: '500' }}>{g.title}</td>
+                        <td style={{ padding: '12px', fontSize:'13px', color:'#0369a1' }}>{g.direction === 'Min' ? 'Higher is Better' : 'Lower is Better'}</td>
                         <td style={{ padding: '12px' }}>{g.target} ({g.uom})</td>
                         <td style={{ padding: '12px', color: '#ea580c', fontWeight: 'bold' }}>{g.actual || '0'}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', background: g.status === 'Completed' ? '#dcfce7' : '#fef3c7', color: g.status === 'Completed' ? '#16a34a' : '#d97706' }}>
-                            {g.status || 'Not Started'}
-                          </span>
-                        </td>
+                        <td style={{ padding: '12px' }}><span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', background: g.status === 'Completed' ? '#dcfce7' : '#fef3c7', color: g.status === 'Completed' ? '#16a34a' : '#d97706' }}>{g.status || 'Not Started'}</span></td>
                         <td style={{ padding: '12px', fontWeight: 'bold', color: '#2563eb' }}>{calculateProgressScore(g)}%</td>
                         <td style={{ padding: '12px' }}>
-                          <input 
-                            type="number" 
-                            value={g.weightage} 
-                            onChange={(e) => {
-                              const updated = [...goals];
-                              updated[index].weightage = parseInt(e.target.value) || 0;
-                              setGoals(updated);
-                            }}
-                            style={{ width: '70px', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                          />
+                          <input type="number" value={g.weightage} onChange={(e) => { const updated = [...goals]; updated[index].weightage = parseInt(e.target.value) || 0; setGoals(updated); }} style={{ width: '70px', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-
-                <div style={{ background: totalWeightage === 100 ? '#f0fdf4' : '#fff1f2', padding: '15px', borderRadius: '8px', border: totalWeightage === 100 ? '1px solid #bbf7d0' : '1px solid #fecdd3', marginBottom: '25px' }}>
-                  <strong style={{ color: totalWeightage === 100 ? '#16a34a' : '#df1c1c' }}>
-                    {totalWeightage === 100 ? '✅ Total Weightage Balance Intact' : '⚠️ Weightage Balance Error'}
-                  </strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748b' }}>Current running weight split: <strong>{totalWeightage}%</strong></p>
-                </div>
-
-                <label style={{ display: 'block', marginBottom: '20px' }}>
-                  <strong style={{ display: 'block', marginBottom: '8px', color: '#334155' }}>L1 Reviewer Discussion Comments / Feedback Log [cite: 32, 40]</strong>
-                  <textarea rows="4" placeholder="Enter structured performance audit comments..." style={{ width: '98%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                </label>
 
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
                   <button onClick={async () => {
@@ -409,9 +378,7 @@ export default function App() {
                       alert("🛡️ Milestone Secured: Goal sheet verified and approved inside MongoDB Atlas Cloud!");
                       window.location.reload(); 
                     }
-                  }} style={{ padding: '10px 20px', background: '#059669', border: 'none', borderRadius: '6px', fontWeight: 'bold', color: '#fff', cursor: 'pointer' }}>
-                    🛡️ Approve & Lock Milestone
-                  </button>
+                  }} style={{ padding: '10px 20px', background: '#059669', border: 'none', borderRadius: '6px', fontWeight: 'bold', color: '#fff', cursor: 'pointer' }}>🛡️ Approve & Lock Milestone</button>
                 </div>
               </div>
             )}
@@ -421,44 +388,16 @@ export default function App() {
                 <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '25px' }}>
                   <div style={{ borderRight: '2px solid #f1f5f9', paddingRight: '20px' }}>
                     <h3 style={{ marginTop: 0, color: '#7c3aed' }}>👑 HR Governance Desk</h3>
-                    <p style={{ color: '#64748b', fontSize: '14px' }}>Global orchestration configuration metrics[cite: 40].</p>
-                    <div style={{ marginTop: '20px' }}>
-                      <strong>Goal Window Status</strong>
-                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                        <span style={{ background: '#dcfce7', color: '#16a34a', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>🟢 WINDOW OPEN</span>
-                      </div>
-                    </div>
+                    <span style={{ background: '#dcfce7', color: '#16a34a', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>🟢 WINDOW OPEN</span>
                   </div>
-
                   <div>
-                    <h4 style={{ margin: '0 0 15px 0', color: '#334155' }}>Corporate Cycle Submission Analytics (Q2) [cite: 43]</h4>
+                    <h4 style={{ margin: '0 0 15px 0', color: '#334155' }}>Corporate Cycle Submission Analytics (Q2)</h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px' }}>
-                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Total Eligible Staff</span>
-                        <strong style={{ fontSize: '24px', color: '#0f172a' }}>{adminStats.totalEligible}</strong>
-                      </div>
-                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Total Saved Sheets</span>
-                        <strong style={{ fontSize: '24px', color: '#0f172a' }}>{adminStats.submitted}</strong>
-                      </div>
-                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Approved Sheets</span>
-                        <strong style={{ fontSize: '24px', color: '#059669' }}>{adminStats.approved}</strong>
-                      </div>
-                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Pending Escalations</span>
-                        <strong style={{ fontSize: '24px', color: '#b45309' }}>{adminStats.pending}</strong>
-                      </div>
+                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}><span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Total Eligible</span><strong style={{ fontSize: '24px', color: '#0f172a' }}>{adminStats.totalEligible}</strong></div>
+                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}><span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Saved Sheets</span><strong style={{ fontSize: '24px', color: '#0f172a' }}>{adminStats.submitted}</strong></div>
+                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}><span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Approved</span><strong style={{ fontSize: '24px', color: '#059669' }}>{adminStats.approved}</strong></div>
+                      <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}><span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Escalations</span><strong style={{ fontSize: '24px', color: '#b45309' }}>{adminStats.pending}</strong></div>
                     </div>
-                  </div>
-                </div>
-
-                <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#334155' }}>🔒 Real-Time System Audit Trail (Security & Rule Override Logs) [cite: 44]</h4>
-                  <div style={{ background: '#0f172a', color: '#38bdf8', fontFamily: 'monospace', padding: '15px', borderRadius: '8px', fontSize: '13px', lineHeight: '1.6', maxHeight: '180px', overflowY: 'auto' }}>
-                    <div>[2026-05-17 13:10:04] - SUCCESS: Connection established to Atlas cloud cluster.</div>
-                    <div>[2026-05-17 13:14:11] - INBOUND: Achievement tracked actual payload updated for user 'vaibhav'.</div>
-                    <div style={{ color: '#4ade80' }}>[2026-05-17 13:14:12] - COMPUTED: Progress scores calculated via native system formula engine.</div>
                   </div>
                 </div>
               </div>
