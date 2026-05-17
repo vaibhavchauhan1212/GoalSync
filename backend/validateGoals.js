@@ -47,4 +47,4 @@ const validateGoalSheet = (req, res, next) => {
     next();
 };
 
-module.exports = { validateGoalSheet };
+module.exports = validateGoalSheet;
