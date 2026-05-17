@@ -26,7 +26,7 @@ export default function App() {
     const fetchCloudData = async () => {
       try {
         if (currentRole === 'Manager') {
-          const response = await fetch('http://localhost:5000/api/auth/login');
+          const response = await fetch('http://192.168.0.172:5000/api/goals/latest');
           const result = await response.json();
           if (result.status === "success" && result.data) {
             setGoals(result.data.goals);
@@ -35,7 +35,7 @@ export default function App() {
             }
           }
         } else if (currentRole === 'Admin') {
-          const response = await fetch('http://localhost:5000/api/auth/login');
+          const response = await fetch('http://192.168.0.172:5000/api/admin/stats');
           const result = await response.json();
           if (result.status === "success" && result.data) {
             setAdminStats(result.data);
@@ -137,7 +137,7 @@ export default function App() {
  const handleFinalSubmit = async () => {
     try {
       // Added /api/goals/submit to the URL string below:
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://192.168.0.172:5000/api/goals/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goals })
@@ -172,7 +172,7 @@ export default function App() {
               e.preventDefault();
               setLoginError('');
               try {
-                const response = await fetch('http://localhost:5000/api/auth/login', {
+                const response = await fetch('http://192.168.0.172:5000/api/auth/login', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(loginCredentials)

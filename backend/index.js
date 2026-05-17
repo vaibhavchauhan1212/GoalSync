@@ -184,6 +184,7 @@ app.get('/api/auth/seed', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is officially running on port ${PORT}`);
+
+app.listen(PORT || 5000, '0.0.0.0', () => {
+    console.log(`Backend server successfully listening on network port ${PORT || 5000}`);
 });
