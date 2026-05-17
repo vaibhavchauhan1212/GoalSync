@@ -12,10 +12,11 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
   
-  // State to hold the list of goals an employee is building/tracking
+  // State to hold the list of goals an employee is building/tracking (Includes a Shared Departmental KPI)
   const [goals, setGoals] = useState([
-    { title: 'Increase Platform Speed', thrustArea: 'Infrastructure', uom: 'Percentage', direction: 'Min', target: '25', weightage: 30, actual: '0', status: 'Not Started' },
-    { title: 'Reduce Server Turnaround Time (TAT)', thrustArea: 'Operations', uom: 'Numeric', direction: 'Max', target: '200', weightage: 20, actual: '200', status: 'Not Started' }
+    { title: 'Increase Platform Speed', thrustArea: 'Infrastructure', uom: 'Percentage', direction: 'Min', target: '25', weightage: 30, actual: '0', status: 'Not Started', isShared: false },
+    { title: 'Reduce Server Turnaround Time (TAT)', thrustArea: 'Operations', uom: 'Numeric', direction: 'Max', target: '200', weightage: 20, actual: '200', status: 'Not Started', isShared: false },
+    { title: 'Corporate Cyber-Security Compliance Audit', thrustArea: 'Security', uom: 'Zero-based', direction: 'Min', target: '0', weightage: 10, actual: '0', status: 'Not Started', isShared: true }
   ]);
   // 📑 Live database lifecycle state
   const [submissionStatus, setSubmissionStatus] = useState("Pending L1 Review");
@@ -52,7 +53,7 @@ export default function App() {
   const [newTitle, setNewTitle] = useState('');
   const [newThrust, setNewThrust] = useState('Infrastructure');
   const [newUom, setNewUom] = useState('Numeric');
-  const [newDirection, setNewDirection] = useState('Min'); // Min = Higher is Better, Max = Lower is Better
+  const [newDirection, setNewDirection] = useState('Min'); 
   const [newTarget, setNewTarget] = useState('');
   const [newWeight, setNewWeight] = useState(10);
 
@@ -67,7 +68,7 @@ export default function App() {
     if (target === 0) return 0;
 
     if (g.uom === 'Zero-based') {
-      return actual === 0 ? 100 : 0; // If 0 -> 100%, else 0%
+      return actual === 0 ? 100 : 0; 
     }
     
     if (g.uom === 'Timeline') {
@@ -75,12 +76,10 @@ export default function App() {
     }
 
     if (g.direction === 'Max') {
-      // Lower is Better formula: Target ÷ Achievement
       if (actual === 0) return 0;
       return Math.min(Math.round((target / actual) * 100), 100);
     }
 
-    // Default: Higher is Better formula: Achievement ÷ Target
     return Math.min(Math.round((actual / target) * 100), 100);
   };
 
@@ -116,7 +115,8 @@ export default function App() {
       target: newTarget,
       weightage: parseInt(newWeight),
       actual: '0',
-      status: 'Not Started'
+      status: 'Not Started',
+      isShared: false
     };
 
     setGoals([...goals, freshGoal]);
@@ -126,6 +126,10 @@ export default function App() {
   };
 
   const handleRemoveGoal = (index) => {
+    // Shared KPIs pushed by Admin cannot be deleted by employees
+    if (goals[index].isShared) {
+      return alert("Governance Restriction: Mandated corporate shared KPIs cannot be deleted from individual sheets.");
+    }
     const updated = goals.filter((_, i) => i !== index);
     setGoals(updated);
   };
@@ -212,7 +216,18 @@ export default function App() {
             </div>
           </nav>
 
-          <main style={{ padding: '30px' }}>
+          {/* 📅 SECTION 2.3: ENFORCED GOVERNANCE TIMELINE BANNER */}
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px 25px', borderRadius: '8px', margin: '0 30px 25px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>📆</span>
+              <span style={{ fontSize: '14px', color: '#1e40af', fontWeight: '500' }}>
+                Active Governance Window: <strong>Phase 1 — Goal Setting & Approval (Cycle Launch: 1st May)</strong> [cite: 37]
+              </span>
+            </div>
+            <span style={{ fontSize: '12px', background: '#3b82f6', color: '#fff', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>Next Up: Q1 Progress Review (July) [cite: 37]</span>
+          </div>
+
+          <main style={{ padding: '0 30px 30px 30px' }}>
             {currentRole === 'Employee' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                 
@@ -279,9 +294,11 @@ export default function App() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {goals.map((g, index) => (
-                          <div key={index} style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+                          <div key={index} style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: g.isShared ? '#f8fafc' : '#ffffff', borderLeft: g.isShared ? '4px solid #0284c7' : '1px solid #e2e8f0' }}>
                             <div>
-                              <strong style={{ color: '#334155' }}>{g.title}</strong>
+                              <strong style={{ color: '#334155' }}>
+                                {g.title} {g.isShared && <span style={{ fontSize: '11px', background: '#bae6fd', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>📢 Shared KPI</span>}
+                              </strong>
                               <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{g.thrustArea} • Target: {g.target} ({g.uom}) • <small style={{color:'#0369a1'}}>{g.direction === 'Min' ? 'Higher is Better' : 'Lower is Better'}</small></span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -345,7 +362,7 @@ export default function App() {
                   <thead>
                     <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '12px' }}>Goal Title</th>
-                      <th style={{ padding: '12px' }}>Calculation Model</th>
+                      <th style={{ padding: '12px' }}>Model</th>
                       <th style={{ padding: '12px' }}>Planned Target</th>
                       <th style={{ padding: '12px' }}>Actual Progress</th>
                       <th style={{ padding: '12px' }}>Status</th>
@@ -356,9 +373,20 @@ export default function App() {
                   <tbody>
                     {goals.map((g, index) => (
                       <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px', fontWeight: '500' }}>{g.title}</td>
+                        <td style={{ padding: '12px', fontWeight: '500' }}>
+                          {g.title} {g.isShared && <small style={{color:'#0284c7', display:'block'}}>📢 Pushed Shared KPI (Target Locked) [cite: 25]</small>}
+                        </td>
                         <td style={{ padding: '12px', fontSize:'13px', color:'#0369a1' }}>{g.direction === 'Min' ? 'Higher is Better' : 'Lower is Better'}</td>
-                        <td style={{ padding: '12px' }}>{g.target} ({g.uom})</td>
+                        <td style={{ padding: '12px' }}>
+                          {/* Target and title are read-only for employees/recipients under Section 2.1 */}
+                          <input 
+                            type="text" 
+                            value={g.target} 
+                            disabled={g.isShared} 
+                            onChange={(e) => { const updated = [...goals]; updated[index].target = e.target.value; setGoals(updated); }} 
+                            style={{ width: '80px', padding: '4px', border: g.isShared ? 'none' : '1px solid #cbd5e1', background: g.isShared ? 'transparent' : '#fff' }} 
+                          />
+                        </td>
                         <td style={{ padding: '12px', color: '#ea580c', fontWeight: 'bold' }}>{g.actual || '0'}</td>
                         <td style={{ padding: '12px' }}><span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', background: g.status === 'Completed' ? '#dcfce7' : '#fef3c7', color: g.status === 'Completed' ? '#16a34a' : '#d97706' }}>{g.status || 'Not Started'}</span></td>
                         <td style={{ padding: '12px', fontWeight: 'bold', color: '#2563eb' }}>{calculateProgressScore(g)}%</td>
