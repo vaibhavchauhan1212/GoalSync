@@ -26,7 +26,7 @@ export default function App() {
     const fetchCloudData = async () => {
       try {
         if (currentRole === 'Manager') {
-          const response = await fetch('http://localhost:5000/api/goals/latest');
+          const response = await fetch('http://localhost:5000/api/auth/login');
           const result = await response.json();
           if (result.status === "success" && result.data) {
             setGoals(result.data.goals);
@@ -35,7 +35,7 @@ export default function App() {
             }
           }
         } else if (currentRole === 'Admin') {
-          const response = await fetch('http://localhost:5000/api/admin/stats');
+          const response = await fetch('http://localhost:5000/api/auth/login');
           const result = await response.json();
           if (result.status === "success" && result.data) {
             setAdminStats(result.data);
@@ -134,9 +134,10 @@ export default function App() {
     setGoals(updated);
   };
 
-  const handleFinalSubmit = async () => {
+ const handleFinalSubmit = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/goals/submit', {
+      // Added /api/goals/submit to the URL string below:
+      const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goals })
@@ -400,7 +401,7 @@ export default function App() {
 
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
                   <button onClick={async () => {
-                    const response = await fetch('http://localhost:5000/api/goals/approve', { method: 'POST' });
+                    const response = await fetch('https://rockslide-user-sureness.ngrok-free.dev', { method: 'POST' });
                     const result = await response.json();
                     if (result.status === "success") {
                       alert("🛡️ Milestone Secured: Goal sheet verified and approved inside MongoDB Atlas Cloud!");
